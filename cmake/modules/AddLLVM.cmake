@@ -202,7 +202,7 @@ ${name} ignored.")
     endif()
 
     add_library( ${name} ${libkind} ${ALL_FILES} )
-    set_output_directory(${name} ${LLVM_RUNTIME_OUTPUT_INTDIR} ${LLVM_LIBRARY_OUTPUT_INTDIR})
+    # set_output_directory(${name} ${LLVM_RUNTIME_OUTPUT_INTDIR} ${LLVM_LIBRARY_OUTPUT_INTDIR})
     set_target_properties( ${name} PROPERTIES PREFIX "" )
     add_dead_strip( ${name} )
 
