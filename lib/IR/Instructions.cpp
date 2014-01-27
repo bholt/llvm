@@ -2350,6 +2350,11 @@ unsigned CastInst::isEliminableCastPair(
 
 CastInst *CastInst::Create(Instruction::CastOps op, Value *S, Type *Ty, 
   const Twine &Name, Instruction *InsertBefore) {
+  
+  if (op == BitCast && isa<PointerType>(Ty) && isa<PointerType>(S->getType()) &&
+    S->getType()->getPointerAddressSpace() != Ty->getPointerAddressSpace())
+      op = AddrSpaceCast;
+  
   assert(castIsValid(op, S, Ty) && "Invalid cast!");
   // Construct and return the appropriate CastInst subclass
   switch (op) {
