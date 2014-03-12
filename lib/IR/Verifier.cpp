@@ -79,6 +79,9 @@ using namespace llvm;
 static cl::opt<bool> DisableDebugInfoVerifier("disable-debug-info-verifier",
                                               cl::init(true));
 
+static cl::opt<bool> VerifierStrict("verifier-strict", cl::init(false),
+                                    cl::desc("Fire a failed assert right away."));
+
 namespace {
 class Verifier : public InstVisitor<Verifier> {
   friend class InstVisitor<Verifier>;
@@ -310,6 +313,7 @@ private:
     WriteValue(V3);
     WriteValue(V4);
     Broken = true;
+    if (VerifierStrict) assert(false);
   }
 
   void CheckFailed(const Twine &Message, const Value *V1, Type *T2,
@@ -319,6 +323,7 @@ private:
     WriteType(T2);
     WriteValue(V3);
     Broken = true;
+    if (VerifierStrict) assert(false);
   }
 
   void CheckFailed(const Twine &Message, Type *T1, Type *T2 = 0, Type *T3 = 0) {
@@ -327,6 +332,7 @@ private:
     WriteType(T2);
     WriteType(T3);
     Broken = true;
+    if (VerifierStrict) assert(false);
   }
 };
 } // End anonymous namespace
@@ -548,7 +554,14 @@ void Verifier::visitMDNode(MDNode &MD, Function *F) {
     else if (Argument *A = dyn_cast<Argument>(Op))
       ActualF = A->getParent();
     assert(ActualF && "Unimplemented function local metadata case!");
-
+    
+    if (ActualF != F) {
+      errs() << "!! function-local metatdata in wrong fn\n";
+      errs() << MD << "\n";
+      errs() << *Op << "\n";
+      errs() << F->getName() << "\n";
+    }
+    
     Assert2(ActualF == F, "function-local metadata used in wrong function",
             &MD, Op);
   }
@@ -1961,8 +1974,11 @@ void Verifier::verifyDominatesUse(Instruction &I, unsigned i) {
   }
 
   const Use &U = I.getOperandUse(i);
-  Assert2(InstsInThisBlock.count(Op) || DT.dominates(Op, U),
-          "Instruction does not dominate all uses!", Op, &I);
+  if (!(InstsInThisBlock.count(Op) || DT.dominates(Op, U))) {
+    outs() << "------------\n" << *Op->getParent() << "\n=============\n" << *I.getParent() << "\n\n";
+  }
+  Assert4(InstsInThisBlock.count(Op) || DT.dominates(Op, U),
+          "Instruction does not dominate all uses!", Op, &I, I.getParent()->getParent(), Op->getParent()->getParent());
 }
 
 /// verifyInstruction - Verify that an instruction is well formed.
